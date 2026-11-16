@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Golden Pizza</title>
+<style>
+/* Plain pizzeria-site look on purpose: system fonts, native form controls, simple boxes. Single light look. */
+:root{
+  --bg:#ffffff; --ink:#222222; --muted:#666666; --line:#bbbbbb;
+  --red:#c4281c; --yellow:#ffd23f; --box:#f5f5f5; --err:#b00020;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{
+  background:var(--bg); color:var(--ink);
+  font:16px/1.45 Verdana, Arial, sans-serif;
+  margin:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:0 40px;
+}
+.wrap{max-width:900px;margin:0 auto}
+header{background:var(--yellow);border-bottom:4px solid var(--red);margin:0 calc(-1 * max(16px,env(safe-area-inset-left,0px)));padding:18px max(16px,env(safe-area-inset-left,0px));margin-bottom:20px}
+header .in{max-width:900px;margin:0 auto}
+h1{margin:0;font-size:2rem;color:var(--red);font-family:Georgia,'Times New Roman',serif;font-style:italic}
+header p{margin:4px 0 0}
+h2{font-size:1.05rem;margin:0 0 8px;color:var(--red)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px;align-items:start}
+.left{min-width:0}
+fieldset{border:1px solid var(--line);margin:0 0 14px;padding:10px 14px 12px;min-width:0}
+legend{font-weight:bold;padding:0 6px}
+.choice{display:block;margin:6px 0}
+.choice input{margin-right:8px}
+.price{color:var(--muted)}
+.qtyrow{display:flex;align-items:center;gap:8px;margin:6px 0 0}
+.qtyrow button{width:34px;height:34px;font-size:1.2rem;cursor:pointer}
+.qtyrow output{display:inline-block;min-width:28px;text-align:center;font-weight:bold}
+label.fl{display:block;font-weight:bold;margin-bottom:4px}
+input[type=text]{font:inherit;width:100%;max-width:340px;padding:6px;border:1px solid #777}
+input[aria-invalid=true]{border-color:var(--err);border-width:2px}
+.err{color:var(--err);font-size:.9rem;margin-top:4px}
+.err:empty{display:none}
+.field{margin-bottom:14px}
+.right{background:var(--box);border:1px solid var(--line);padding:14px;min-width:0}
+table{width:100%;border-collapse:collapse;font-size:.95rem}
+td{padding:3px 0;vertical-align:top}
+td:last-child{text-align:right;white-space:nowrap;padding-left:10px}
+tr.line td{border-top:1px solid var(--line);padding-top:6px}
+tr.dim td{color:var(--muted)}
+.total{display:flex;justify-content:space-between;font-size:1.3rem;font-weight:bold;margin:10px 0;border-top:2px solid var(--ink);padding-top:8px}
+.btn{font:inherit;font-weight:bold;background:var(--red);color:#fff;border:2px solid #7d150d;padding:10px 14px;width:100%;cursor:pointer}
+.btn:hover{background:#a82016}
+button:focus-visible,input:focus-visible{outline:3px solid #1a56db;outline-offset:2px}
+.fine{color:var(--muted);font-size:.8rem;margin:10px 0 0}
+.done{max-width:560px;margin:0 auto;border:2px solid var(--red);padding:20px;background:var(--box)}
+.done h2{font-size:1.4rem}
+.done h2:focus{outline:none}
+.done .btn{width:auto;margin-top:12px}
+@media (max-width:760px){.grid{grid-template-columns:minmax(0,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><div class="in">
+    <h1>Golden Pizza</h1>
+    <p>Build your own pizza. Order online for pickup or delivery.</p>
+  </div></header>
+
+  <form id="f" novalidate>
+    <div class="grid">
+      <div class="left">
+        <fieldset><legend>Size</legend><div id="sizes"></div></fieldset>
+        <fieldset><legend>Crust</legend><div id="crusts"></div></fieldset>
+        <fieldset><legend>Toppings ($1.00 each)</legend><div id="tops"></div></fieldset>
+        <fieldset>
+          <legend>How many</legend>
+          <div class="qtyrow">
+            <button type="button" id="minus" aria-label="One fewer pizza">-</button>
+            <output id="qty" aria-live="polite">1</output>
+            <button type="button" id="plus" aria-label="One more pizza">+</button>
+          </div>
+        </fieldset>
+        <fieldset><legend>Pickup or delivery</legend><div id="modes"></div></fieldset>
+        <div class="field">
+          <label class="fl" for="cname">Name</label>
+          <input type="text" id="cname" name="customer" autocomplete="name" aria-describedby="nameerr">
+          <div class="err" id="nameerr" role="alert"></div>
+        </div>
+        <div class="field" id="addrfield" hidden>
+          <label class="fl" for="addr">Delivery address</label>
+          <input type="text" id="addr" name="address" autocomplete="street-address" aria-describedby="addrerr">
+          <div class="err" id="addrerr" role="alert"></div>
+        </div>
+      </div>
+
+      <aside class="right" aria-label="Your order">
+        <h2>Your order</h2>
+        <table id="rows"></table>
+        <div class="total"><span>Total</span><span id="total">$0.00</span></div>
+        <button class="btn" type="submit">Place order</button>
+        <p class="fine">Class project. No payment is taken and nothing goes to a real restaurant.</p>
+      </aside>
+    </div>
+  </form>
+
+  <section class="done" id="done" hidden>
+    <h2 id="doneh" tabindex="-1"></h2>
+    <div id="ticket"></div>
+    <p class="fine">This was a practice order for a class project. No payment was taken.</p>
+    <button class="btn" type="button" id="again">Order another pizza</button>
+  </section>
+</div>
+
+<script>
+const SIZES=[{id:'small',name:'Small',note:'10 in',price:8},{id:'medium',name:'Medium',note:'12 in',price:10},{id:'large',name:'Large',note:'14 in',price:12}];
+const CRUSTS=[{id:'thin',name:'Thin',price:0},{id:'regular',name:'Regular',price:0},{id:'stuffed',name:'Stuffed',price:2}];
+const TOPS=[
+  {id:'pepperoni',name:'Pepperoni',price:1},{id:'sausage',name:'Sausage',price:1},
+  {id:'mushrooms',name:'Mushrooms',price:1},{id:'onions',name:'Onions',price:1},
+  {id:'olives',name:'Black olives',price:1},{id:'cheese',name:'Extra cheese',price:1}
+];
+const MODES=[{id:'pickup',name:'Pickup',note:'ready in 15-20 min',fee:0},{id:'delivery',name:'Delivery',note:'$3.00 fee, 35-45 min',fee:3}];
+
+const $=s=>document.querySelector(s);
+const f=$('#f');
+let qty=1;
+const money=n=>'$'+n.toFixed(2);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function choice(type,name,id,label,note,checked){
+  return '<label class="choice"><input type="'+type+'" name="'+name+'" value="'+id+'"'+(checked?' checked':'')+'>'+label+' <span class="price">'+note+'</span></label>';
+}
+$('#sizes').innerHTML=SIZES.map(s=>choice('radio','size',s.id,s.name+' ('+s.note+')','- '+money(s.price),s.id==='medium')).join('');
+$('#crusts').innerHTML=CRUSTS.map(c=>choice('radio','crust',c.id,c.name,c.price?'+ '+money(c.price):'',c.id==='regular')).join('');
+$('#tops').innerHTML=TOPS.map(t=>choice('checkbox','top',t.id,t.name,'',t.id==='pepperoni')).join('');
+$('#modes').innerHTML=MODES.map(m=>choice('radio','mode',m.id,m.name,'- '+m.note,m.id==='pickup')).join('');
+
+function state(){
+  return {
+    size:f.elements.size.value, crust:f.elements.crust.value, mode:f.elements.mode.value, qty:qty,
+    tops:[...f.querySelectorAll('input[name=top]:checked')].map(i=>i.value)
+  };
+}
+function calc(s){
+  const size=SIZES.find(x=>x.id===s.size), crust=CRUSTS.find(x=>x.id===s.crust);
+  const tops=TOPS.filter(t=>s.tops.includes(t.id)), mode=MODES.find(m=>m.id===s.mode);
+  const each=size.price+crust.price+tops.reduce((a,t)=>a+t.price,0);
+  const sub=each*s.qty, fee=mode.fee;
+  return {size,crust,tops,mode,each,sub,fee,total:sub+fee};
+}
+
+function render(){
+  const s=state(),c=calc(s);
+  let h='<tr><td>'+c.size.name+' pizza</td><td>'+money(c.size.price)+'</td></tr>';
+  h+='<tr><td>'+c.crust.name+' crust</td><td>'+(c.crust.price?money(c.crust.price):'-')+'</td></tr>';
+  if(c.tops.length){ c.tops.forEach(t=>{h+='<tr><td>'+t.name+'</td><td>'+money(t.price)+'</td></tr>';}); }
+  else h+='<tr class="dim"><td>No toppings</td><td></td></tr>';
+  h+='<tr class="line"><td>'+(s.qty>1?'Subtotal ('+s.qty+' x '+money(c.each)+')':'Subtotal')+'</td><td>'+money(c.sub)+'</td></tr>';
+  h+='<tr><td>'+c.mode.name+'</td><td>'+(c.fee?money(c.fee):'Free')+'</td></tr>';
+  $('#rows').innerHTML=h;
+  $('#total').textContent=money(c.total);
+  $('#qty').textContent=s.qty;
+  $('#addrfield').hidden=s.mode!=='delivery';
+}
+
+f.addEventListener('change',render);
+$('#minus').addEventListener('click',()=>{qty=Math.max(1,qty-1);render();});
+$('#plus').addEventListener('click',()=>{qty=Math.min(10,qty+1);render();});
+
+function setErr(inputId,errId,msg){
+  const i=$('#'+inputId),e=$('#'+errId);
+  e.textContent=msg||'';
+  if(msg) i.setAttribute('aria-invalid','true'); else i.removeAttribute('aria-invalid');
+}
+f.addEventListener('submit',e=>{
+  e.preventDefault();
+  const s=state(),c=calc(s);
+  const name=$('#cname').value.trim(),addr=$('#addr').value.trim();
+  setErr('cname','nameerr',name?'':'Please enter your name.');
+  setErr('addr','addrerr',(s.mode==='delivery'&&!addr)?'Please enter a delivery address, or choose pickup.':'');
+  if(!name){$('#cname').focus();return;}
+  if(s.mode==='delivery'&&!addr){$('#addr').focus();return;}
+  const num='GP-'+Math.floor(1000+Math.random()*9000);
+  const eta=s.mode==='delivery'?'35-45 minutes':'15-20 minutes';
+  $('#doneh').textContent='Thanks, '+name+'! Your order is in.';
+  $('#ticket').innerHTML=
+    '<p><b>Order number: '+num+'</b></p>'+
+    '<p>'+s.qty+' x '+c.size.name+' pizza, '+c.crust.name.toLowerCase()+' crust'+
+    (c.tops.length?', '+c.tops.map(t=>esc(t.name.toLowerCase())).join(', '):', cheese only')+'</p>'+
+    '<p>'+(s.mode==='delivery'?'Delivery to '+esc(addr):'Pickup at Golden Pizza')+'. Ready in '+eta+'.</p>'+
+    '<p><b>Total: '+money(c.total)+'</b></p>';
+  f.hidden=true;
+  $('#done').hidden=false;
+  $('#doneh').focus();
+  window.scrollTo(0,0);
+});
+$('#again').addEventListener('click',()=>{
+  $('#done').hidden=true;
+  f.hidden=false;
+  $('#cname').focus();
+});
+
+render();
+</script>
+</body>
+</html>
